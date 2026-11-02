@@ -1,0 +1,48 @@
+# Сборка и проверочный расчёт при каждом push / pull request
+name: build
+
+on:
+  push:
+    branches: [ main, master ]
+    tags-ignore: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore WellPadOptimizer.csproj
+
+      - name: Build
+        run: dotnet build WellPadOptimizer.csproj -c Release --no-restore
+
+      - name: Проверочный расчёт на данных из репозитория
+        run: |
+          dotnet run --project WellPadOptimizer.csproj -c Release --no-build -- \
+            --input data/input_mass.json \
+            --map data/terrain_map.asc \
+            --settings settings.json \
+            --out ci_results
+
+      - name: Сохранить результаты расчёта
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-results
+          path: ci_results/
+          retention-days: 14

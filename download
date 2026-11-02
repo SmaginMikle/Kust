@@ -1,0 +1,11 @@
+bin/
+obj/
+publish/
+dist/
+results/
+ci_results/
+*.user
+.vs/
+.idea/
+__pycache__/
+*.pkl

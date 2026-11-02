@@ -1,0 +1,110 @@
+# Выпуск релиза: при push тега вида v1.2.3 собираются автономные исполняемые файлы
+# (один файл, .NET устанавливать не нужно) для Windows, Linux и macOS и прикладываются к релизу.
+name: release
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег релиза (например, v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  publish:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            exe: WellPadOptimizer.exe
+          - rid: linux-x64
+            os: ubuntu-latest
+            exe: WellPadOptimizer
+          - rid: osx-arm64
+            os: macos-latest
+            exe: WellPadOptimizer
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Версия из тега
+        id: ver
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VER="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Publish (single file, self-contained)
+        shell: bash
+        run: |
+          dotnet publish WellPadOptimizer.csproj -c Release -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:DebugType=None \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -o publish/${{ matrix.rid }}
+
+      - name: Упаковать
+        shell: bash
+        run: |
+          PKG=WellPadOptimizer-${{ steps.ver.outputs.tag }}-${{ matrix.rid }}
+          mkdir -p "dist/$PKG"
+          cp "publish/${{ matrix.rid }}/${{ matrix.exe }}" "dist/$PKG/"
+          cp settings.json README.md "dist/$PKG/"
+          cp -r data "dist/$PKG/"
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a -tzip "$PKG.zip" "$PKG" > /dev/null
+          else
+            chmod +x "$PKG/${{ matrix.exe }}"
+            zip -qr "$PKG.zip" "$PKG"
+          fi
+
+      - name: Проверочный запуск собранного файла
+        if: matrix.rid != 'osx-arm64' || runner.arch == 'ARM64'
+        shell: bash
+        run: |
+          cd "dist/WellPadOptimizer-${{ steps.ver.outputs.tag }}-${{ matrix.rid }}"
+          ./${{ matrix.exe }} --input data/input_mass.json --map data/terrain_map.asc --settings settings.json --out results
+          test -f results/report.html
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.rid }}
+          path: dist/*.zip
+
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Создать релиз и приложить файлы
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: WellPadOptimizer ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: dist/*.zip

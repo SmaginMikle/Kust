@@ -123,16 +123,17 @@ footer { color: var(--ink-3); font-size: 12px; border-top: 1px solid var(--line)
   <section aria-labelledby="h-best">
     <div class="sec-head"><h2 id="h-best">Рекомендуемый вариант</h2><p id="best-name"></p></div>
     <div class="kpis" id="kpis"></div>
+    <p class="note" id="best-note" hidden></p>
   </section>
 
   <section aria-labelledby="h-cmp">
     <div class="sec-head">
       <h2 id="h-cmp">Сравнение вариантов</h2>
-      <p>Все варианты посчитаны по одной модели затрат. Щелчок по строке открывает вариант ниже. Серые строки совпадают с вариантом выше по составу кустов.</p>
+      <p>Все варианты посчитаны по одной модели затрат. Щелчок по строке открывает вариант ниже. Серые строки совпадают с вариантом выше по составу кустов или не имеют решения.</p>
     </div>
     <div class="grid2">
       <div class="panel">
-        <div class="chart-cap"><b>Отклонение итоговых затрат от лучшего</b><span>млн руб</span></div>
+        <div class="chart-cap"><b>Отклонение итоговых затрат от рекомендуемого</b><span>млн руб</span></div>
         <div id="ch-delta" class="chart"></div>
       </div>
       <div class="panel">
@@ -215,24 +216,30 @@ footer { color: var(--ink-3); font-size: 12px; border-top: 1px solid var(--line)
   $('best-name').textContent = best.name;
   const fb = full(best);
   const kp = [
-    ['Итоговые затраты', mln(fb.totalCost), 'млн руб', ref ? 'на ' + mln(ref.totalCost - fb.totalCost) + ' млн руб меньше исходного варианта 0' : '', true],
+    ['Итоговые затраты', mln(fb.totalCost), 'млн руб', ref ? (ref.totalCost >= fb.totalCost ? 'на ' + mln(ref.totalCost - fb.totalCost) + ' млн руб меньше' : 'на ' + mln(fb.totalCost - ref.totalCost) + ' млн руб больше') + ' исходного варианта 0' : '', ref && ref.totalCost >= fb.totalCost],
     ['Кустов / скважин', fb.nPads + ' / ' + fb.nWells, '', 'по ' + Math.min(...fb.pads.map((p) => p.count)) + '–' + Math.max(...fb.pads.map((p) => p.count)) + ' скв. на кусте'],
     ['Бурение', mln(fb.drillCost), 'млн руб', 'суммарная проходка ' + fmt(fb.mdTotal / 1000, 1) + ' км'],
     ['Строительство кустов', mln(fb.padBuildCost), 'млн руб', ''],
     ['Отсыпка', mln(fb.sandCost), 'млн руб', fmt(fb.sandVolume / 1000, 1) + ' тыс. м³ песка'],
-    ['Нарушения ограничений', String(fb.violations), '', 'отход ≤ ' + P.MaxOffset + ' м, MD ≤ ' + P.MaxMD + ' м, разворот ≤ ' + P.MaxAzimuthTurn + '°'],
+    ['Скважин с нарушениями', String(fb.wells.filter((w) => w.viol.length).length), 'из ' + fb.nWells, ref ? 'в исходном варианте 0: ' + ref.wells.filter((w) => w.viol.length).length : ''],
   ];
+  if (fb.violations > 0) {
+    const vc = {}; fb.wells.forEach((w) => w.viol.forEach((x) => { vc[x] = (vc[x] || 0) + 1; }));
+    $('best-note').hidden = false;
+    $('best-note').innerHTML = `При размере куста ${P.MinWellsPerPad}–${P.EndMaxWellsPerPad} скважин ни одно размещение не выполняет все технологические ограничения: с одной площадки нельзя достать до всех целей группы в пределах отхода ${P.MaxOffset} м и разворота ${P.MaxAzimuthTurn}°, а меньшие кусты запрещены минимальным размером. Программа выбирает вариант с наименьшим числом нарушений, затем с наименьшими затратами. Нарушения в этом варианте: ` +
+      Object.entries(vc).map(([k, n]) => `${k} — ${n}`).join(', ') + '. Список скважин — на вкладке «Скважины».';
+  }
   $('kpis').innerHTML = kp.map(([k, v, u, d, g]) => `<div class="kpi"><span class="eyebrow">${k}</span><span class="v">${v}<span class="u">${u}</span></span><span class="d${g ? ' good' : ''}">${d}</span></div>`).join('');
 
   // ---------------- таблица вариантов
   function violPill(n) { return n === 0 ? '<span class="pill ok">✓ нет</span>' : `<span class="pill bad">✕ ${n}</span>`; }
-  $('t-variants').innerHTML = '<thead><tr><th class="l">Вариант</th><th>Кустов</th><th>Σ MD, км</th><th>Бурение</th><th>Строит. кустов</th><th>Отсыпка</th><th>Итого, млн руб</th><th>Δ к лучшему</th><th>Нарушения</th></tr></thead><tbody>' +
+  $('t-variants').innerHTML = '<thead><tr><th class="l">Вариант</th><th>Кустов</th><th>Σ MD, км</th><th>Бурение</th><th>Строит. кустов</th><th>Отсыпка</th><th>Итого, млн руб</th><th>Δ к рекоменд.</th><th>Скв. с нарушениями</th></tr></thead><tbody>' +
     R.variants.map((v, i) => {
       const f = full(v);
       const cls = [v === best ? 'best' : '', v.sameAs ? 'alias' : '', 'clickable'].join(' ');
-      const tag = v === best ? ' <span class="pill tag">лучший</span>' : v.kind === 'input' ? ' <span class="pill warn">исходный</span>' : '';
-      return `<tr class="${cls}" data-i="${i}"><td class="name l">${esc(v.name)}${tag}</td><td>${f.nPads}</td><td>${fmt(f.mdTotal / 1000)}</td><td>${mln(f.drillCost)}</td><td>${mln(f.padBuildCost)}</td><td>${mln(f.sandCost)}</td><td><b>${mln(f.totalCost)}</b></td><td>${f.totalCost - fb.totalCost > 0.5 ? '+' : ''}${mln(f.totalCost - fb.totalCost)}</td><td>${violPill(f.violations)}</td></tr>`;
-    }).join('') + '</tbody>';
+      const tag = v === best ? ' <span class="pill tag">рекомендуемый</span>' : v.kind === 'input' ? ' <span class="pill warn">исходный</span>' : '';
+      return `<tr class="${cls}" data-i="${i}"><td class="name l">${esc(v.name)}${tag}</td><td>${f.nPads}</td><td>${fmt(f.mdTotal / 1000)}</td><td>${mln(f.drillCost)}</td><td>${mln(f.padBuildCost)}</td><td>${mln(f.sandCost)}</td><td><b>${mln(f.totalCost)}</b></td><td>${f.totalCost - fb.totalCost > 0.5 ? '+' : ''}${mln(f.totalCost - fb.totalCost)}</td><td>${violPill(f.wells.filter((w) => w.viol.length).length)}</td></tr>`;
+    }).join('') + (R.meta.infeasible || []).map((x) => `<tr class="alias"><td class="name l">${esc(x.name)}</td><td colspan="7" class="l" style="font-family:var(--font-body)">${esc(x.reason)}</td><td><span class="pill warn">нет решения</span></td></tr>`).join('') + '</tbody>';
   $('t-variants').addEventListener('click', (e) => {
     const tr = e.target.closest('tr[data-i]'); if (!tr) return;
     $('sel-var').value = tr.dataset.i; renderVariant(); $('h-var').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -474,7 +481,7 @@ footer { color: var(--ink-3); font-size: 12px; border-top: 1px solid var(--line)
 
   $('foot').innerHTML = [
     `Ограничения: отход до T1 ≤ ${P.MaxOffset} м; MD до T1 ≤ ${P.MaxMD} м; темпы набора ${P.Dls1} и ${P.Dls2} °/10 м; вертикальный участок ${P.VerticalLength} м; разворот по азимуту ≤ ${P.MaxAzimuthTurn}° (${P.UseAzimuthTurn ? 'учитывается' : 'не учитывается'}); нагрузка на крюке ≤ ${P.MaxHookLoad} тс; момент ≤ ${P.MaxTorque} кН·м.`,
-    `Стоимость: ННС ${P.CostNNS} тыс. руб/м, ГС ${P.CostGS} тыс. руб/м, песок ${P.SandCostPer1000m3} тыс. руб за 1000 м³; строительство куста — по группам числа скважин. Перебор макс. числа скважин на кусте: ${P.StartMaxWellsPerPad}–${P.EndMaxWellsPerPad}.`,
+    `Стоимость: ННС ${P.CostNNS} тыс. руб/м, ГС ${P.CostGS} тыс. руб/м, песок ${P.SandCostPer1000m3} тыс. руб за 1000 м³; строительство куста — по группам числа скважин. Размер куста: от ${P.MinWellsPerPad} до ${P.EndMaxWellsPerPad} скважин; перебор верхней границы ${P.StartMaxWellsPerPad}–${P.EndMaxWellsPerPad}.`,
   ].map((s) => `<span>${s}</span>`).join('');
 
   function renderAll() { renderCompareCharts(); renderVariant(); renderAB(); }

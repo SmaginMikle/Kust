@@ -13,7 +13,12 @@
   "VariantStep": 1,
   "StartMaxWellsPerPad": 10,
   "EndMaxWellsPerPad": 24,
-  "MinWellsPerPad": 1,
+  "MinWellsPerPad": 10,
+  "SoftRadiusFactor": 1.6,
+  "PenaltyViolation": 1000000,
+  "PenaltyOffsetPerM": 1000,
+  "PenaltyAzimuthPerDeg": 10000,
+  "PenaltyMdPerM": 1000,
   "MaxHookLoad": 180,
   "MaxTorque": 54,
 

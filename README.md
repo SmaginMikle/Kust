@@ -9,6 +9,24 @@ dotnet run -c Release -- --input data/input_mass.json --map data/terrain_map.asc
 Если файл карты не найден, программа строит синтетическую карту и сохраняет её в `results/terrain_map_synthetic.asc`.
 Внешних пакетов NuGet нет: используются только System.Text.Json и Parallel.
 
+## Сборка в GitHub и релизы
+
+* `.github/workflows/build.yml` — при каждом push/pull request: сборка, проверочный расчёт на `data/input_mass.json`,
+  результаты (`report.html`, CSV) сохраняются в артефакт `ci-results` на 14 дней.
+* `.github/workflows/release.yml` — при push тега `v*` (или вручную через Actions → release → Run workflow):
+  автономные однофайловые сборки для `win-x64`, `linux-x64`, `osx-arm64` (.NET устанавливать не нужно),
+  проверочный запуск, архивы `WellPadOptimizer-<тег>-<платформа>.zip` с исполняемым файлом, `settings.json`,
+  `README.md` и папкой `data/` прикладываются к релизу GitHub.
+
+Выпуск релиза:
+
+```
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Запуск из релиза (Windows): `WellPadOptimizer.exe --input data\input_mass.json --out results`.
+
 ## Входные данные
 
 * `input_mass.json` (формат rndrilling-v3). Цели берутся из `massiveDataVariants[].trajBuildRequest[]`:
