@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>WellPadOptimizer</RootNamespace>
+    <AssemblyName>WellPadOptimizer</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="report_template.html" LogicalName="report_template.html" />
+    <None Update="settings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,66 @@
+{
+  "_comment": "Параметры расчёта (соответствуют окну настроек). Единицы: м, град, тыс. руб.",
+
+  "MaxOffset": 1500,
+  "MaxMD": 4000,
+  "LimitsToBottomHole": false,
+  "Dls1": 0.5,
+  "Dls2": 1.5,
+  "DlsBaseLength": 10,
+  "UseAzimuthTurn": true,
+  "MaxAzimuthTurn": 90,
+  "VerticalLength": 40,
+  "VariantStep": 1,
+  "StartMaxWellsPerPad": 10,
+  "EndMaxWellsPerPad": 24,
+  "MinWellsPerPad": 1,
+  "MaxHookLoad": 180,
+  "MaxTorque": 54,
+
+  "CostNNS": 65,
+  "CostGS": 55,
+  "PadCostGroups": [
+    { "MaxWells": 12, "CostPerWell": 16000 },
+    { "MaxWells": 19, "CostPerWell": 13000 },
+    { "MaxWells": 24, "CostPerWell": 12000 }
+  ],
+  "SandCostPer1000m3": 1550,
+
+  "WellsInGroup": 4,
+  "DistanceInGroup": 6,
+  "DistanceBetweenGroups": 15,
+
+  "PadWidth": 120,
+  "PadEndMargin": 60,
+  "PadMinLength": 100,
+  "EmbankmentSlope": 1.5,
+  "Terrain": [
+    { "Code": 1, "Name": "Суходол", "FillHeight": 1.0 },
+    { "Code": 2, "Name": "Болото",  "FillHeight": 2.5 },
+    { "Code": 3, "Name": "Водоём",  "FillHeight": 4.0 }
+  ],
+  "ForbiddenCode": 9,
+  "ForbiddenBuffer": 0,
+  "ExtraPadGap": 0,
+
+  "SiteGridStep": 100,
+  "FootprintSampleStep": 10,
+  "PadOrientations": [0, 30, 60, 90, 120, 150],
+
+  "PipeWeightAir": 0.284,
+  "MudDensity": 1.20,
+  "SteelDensity": 7.85,
+  "FrictionCased": 0.25,
+  "FrictionOpenHole": 0.30,
+  "PipeRadius": 0.08,
+
+  "TrajectoryStep": 10,
+  "MinSeparation": 8,
+  "AntiCollisionMaxMD": 1000,
+  "SeparationWarning": 5,
+
+  "RunScenarioWithoutAzimuthTurn": true,
+  "RunPadCountSweep": true,
+  "PadPrefix": "К-",
+  "StartPadNumber": 1
+}

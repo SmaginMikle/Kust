@@ -1,0 +1,487 @@
+<title>Кустование скважин</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<style>
+/* Layout: инженерный отчёт — сводка сверху, затем сравнение вариантов, рабочая область варианта с вкладками, сравнение A/B */
+:root {
+  --bg: #f4f5f2;
+  --surface: #fcfcfb;
+  --ink: #15201b;
+  --ink-2: #4b5650;
+  --ink-3: #78827c;
+  --line: #d9ddd6;
+  --line-2: #e8ebe5;
+  --accent: #1e6b5c;
+  --accent-soft: #dcebe6;
+  --good: #0ca30c;
+  --critical: #d03b3b;
+  --warning: #b77a00;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --t-dry: #e9dfc4; --t-swamp: #a9b98a; --t-water: #8fb7dc; --t-forb: #d98a84;
+  --font-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121614; --surface: #1a1f1c; --ink: #eef1ed; --ink-2: #b9c2bc; --ink-3: #87918b;
+    --line: #2f3632; --line-2: #252b28; --accent: #5fb8a3; --accent-soft: #1f3530;
+    --good: #2fbf2f; --critical: #e66767; --warning: #e0a52a;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --t-dry: #4a4536; --t-swamp: #3d4a33; --t-water: #2c4a66; --t-forb: #6e3431;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121614; --surface: #1a1f1c; --ink: #eef1ed; --ink-2: #b9c2bc; --ink-3: #87918b;
+  --line: #2f3632; --line-2: #252b28; --accent: #5fb8a3; --accent-soft: #1f3530;
+  --good: #2fbf2f; --critical: #e66767; --warning: #e0a52a;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --t-dry: #4a4536; --t-swamp: #3d4a33; --t-water: #2c4a66; --t-forb: #6e3431;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px 32px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 3.2vw, 32px); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+h1 small { display: block; font-family: var(--font-body); font-weight: 500; font-size: 14px; color: var(--ink-2); letter-spacing: 0; margin-top: 6px; }
+h2 { font-family: var(--font-display); font-weight: 500; font-size: 17px; margin: 0; letter-spacing: 0; text-wrap: balance; }
+.meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); display: grid; gap: 2px; text-align: right; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); font-weight: 600; }
+section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+.sec-head p { margin: 0; color: var(--ink-2); max-width: 70ch; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.kpi { background: var(--surface); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kpi .v { font-family: var(--font-mono); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kpi .v .u { font-size: 12px; color: var(--ink-3); font-weight: 400; margin-left: 4px; }
+.kpi .d { font-size: 12px; color: var(--ink-2); }
+.kpi .d.good { color: var(--good); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 14px; }
+.chart { width: 100%; height: 340px; }
+.chart.tall { height: 620px; }
+.chart.mid { height: 480px; }
+.chart-cap { padding: 12px 16px 0; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.chart-cap b { font-weight: 600; }
+.chart-cap span { color: var(--ink-3); font-size: 12px; }
+
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line-2); text-align: right; white-space: nowrap; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); font-weight: 600; background: var(--surface); position: sticky; top: 0; }
+td.l, th.l { text-align: left; }
+td { font-family: var(--font-mono); font-size: 12.5px; }
+td.name { font-family: var(--font-body); font-size: 13px; white-space: normal; min-width: 240px; }
+tr.best td { background: var(--accent-soft); }
+tr.alias td { color: var(--ink-3); }
+tbody tr { cursor: default; }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover td { background: var(--line-2); }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-body); font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.pill.ok { color: var(--good); }
+.pill.bad { color: var(--critical); }
+.pill.warn { color: var(--warning); }
+.pill.tag { color: var(--accent); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); font-weight: 600; }
+select { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 10px; max-width: 100%; }
+select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.field.wide select { min-width: min(420px, 100%); }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--line); }
+.tabs button { font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-2); background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; cursor: pointer; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs button:hover { color: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink-2); padding: 0 16px 12px; }
+.note { font-size: 12.5px; color: var(--ink-2); max-width: 90ch; margin: 0; }
+.vsum { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; color: var(--ink-2); }
+.vsum b { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+.diffpos { color: var(--critical); }
+.diffneg { color: var(--good); }
+footer { color: var(--ink-3); font-size: 12px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Кустование скважин<small id="sub">Размещение кустов, траектории и сравнение вариантов</small></h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section aria-labelledby="h-best">
+    <div class="sec-head"><h2 id="h-best">Рекомендуемый вариант</h2><p id="best-name"></p></div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section aria-labelledby="h-cmp">
+    <div class="sec-head">
+      <h2 id="h-cmp">Сравнение вариантов</h2>
+      <p>Все варианты посчитаны по одной модели затрат. Щелчок по строке открывает вариант ниже. Серые строки совпадают с вариантом выше по составу кустов.</p>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="chart-cap"><b>Отклонение итоговых затрат от лучшего</b><span>млн руб</span></div>
+        <div id="ch-delta" class="chart"></div>
+      </div>
+      <div class="panel">
+        <div class="chart-cap"><b>Затраты на кусты</b><span>млн руб: строительство + отсыпка</span></div>
+        <div id="ch-pads" class="chart"></div>
+      </div>
+    </div>
+    <div class="panel tbl-wrap"><table id="t-variants"></table></div>
+  </section>
+
+  <section aria-labelledby="h-var">
+    <div class="sec-head"><h2 id="h-var">Вариант</h2></div>
+    <div class="toolbar">
+      <div class="field wide"><label for="sel-var">Вариант расчёта</label><select id="sel-var"></select></div>
+      <div class="field"><label for="sel-reg">Участок</label><select id="sel-reg"></select></div>
+      <div class="field"><label for="sel-zx">Вертикальный масштаб 3D</label>
+        <select id="sel-zx"><option value="1">1 : 1</option><option value="2" selected>× 2</option><option value="4">× 4</option></select></div>
+    </div>
+    <div class="vsum" id="vsum"></div>
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" aria-selected="true" data-tab="t3d" id="tab-t3d">3D траектории</button>
+      <button role="tab" aria-selected="false" data-tab="tplan" id="tab-tplan">План и карта</button>
+      <button role="tab" aria-selected="false" data-tab="tsec" id="tab-tsec">Проекции на вертикальные плоскости</button>
+      <button role="tab" aria-selected="false" data-tab="tpads" id="tab-tpads">Кусты</button>
+      <button role="tab" aria-selected="false" data-tab="twells" id="tab-twells">Скважины</button>
+    </div>
+    <div class="panel" data-pane="t3d"><div id="ch-3d" class="chart tall"></div><div class="legend" id="lg-3d"></div></div>
+    <div class="panel" data-pane="tplan" hidden><div id="ch-plan" class="chart tall"></div><div class="legend" id="lg-plan"></div></div>
+    <div class="grid2" data-pane="tsec" hidden>
+      <div class="panel"><div class="chart-cap"><b>Проекция на плоскость север–глубина</b><span>N, м / TVD, м</span></div><div id="ch-secn" class="chart mid"></div></div>
+      <div class="panel"><div class="chart-cap"><b>Проекция на плоскость восток–глубина</b><span>E, м / TVD, м</span></div><div id="ch-sece" class="chart mid"></div></div>
+    </div>
+    <div class="panel tbl-wrap" data-pane="tpads" hidden><table id="t-pads"></table></div>
+    <div class="panel tbl-wrap" data-pane="twells" hidden style="max-height: 640px; overflow: auto;"><table id="t-wells"></table></div>
+  </section>
+
+  <section aria-labelledby="h-ab">
+    <div class="sec-head">
+      <h2 id="h-ab">Сравнение двух вариантов</h2>
+      <p>Устья и кусты варианта A — сплошные контуры, варианта B — пунктир. Линии показывают проекции стволов на план.</p>
+    </div>
+    <div class="toolbar">
+      <div class="field wide"><label for="sel-a">Вариант A</label><select id="sel-a"></select></div>
+      <div class="field wide"><label for="sel-b">Вариант B</label><select id="sel-b"></select></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><div id="ch-ab" class="chart tall"></div></div>
+      <div class="panel tbl-wrap"><table id="t-ab"></table></div>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>const REPORT = /*__REPORT_DATA__*/null;</script>
+<script>
+(function () {
+  const R = REPORT;
+  if (!R) { document.querySelector('.wrap').insertAdjacentHTML('beforeend', '<p>Нет данных отчёта.</p>'); return; }
+  const $ = (id) => document.getElementById(id);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const fmt = (v, d = 1) => v == null || !isFinite(v) ? '—' : v.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const mln = (v, d = 1) => fmt(v / 1000, d);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const byName = Object.fromEntries(R.variants.map((v) => [v.name, v]));
+  const full = (v) => (v.sameAs ? byName[v.sameAs] : v);
+  const best = byName[R.meta.best];
+  const unique = R.variants.filter((v) => !v.sameAs);
+  const tcls = Object.fromEntries(R.terrainClasses.map((t) => [t.code, t]));
+  const SLOTS = ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6', '--s7', '--s8'];
+  const DASH = ['solid', 'dot', 'dash'];
+  const shortName = (n) => n.replace('Без ограничения разворота', 'Без огр. разворота').replace(' скв./куст', ' скв.');
+
+  // ---------------- шапка и KPI
+  $('meta').innerHTML = [
+    'Входные данные: ' + esc(R.meta.input), 'Карта желательности: ' + esc(R.meta.map),
+    'Расчёт: ' + esc(R.meta.engine) + ', ' + esc(R.meta.generated)].map((s) => '<span>' + s + '</span>').join('');
+  const P = R.meta.params;
+  const ref = R.variants.find((v) => v.kind === 'input');
+  $('best-name').textContent = best.name;
+  const fb = full(best);
+  const kp = [
+    ['Итоговые затраты', mln(fb.totalCost), 'млн руб', ref ? 'на ' + mln(ref.totalCost - fb.totalCost) + ' млн руб меньше исходного варианта 0' : '', true],
+    ['Кустов / скважин', fb.nPads + ' / ' + fb.nWells, '', 'по ' + Math.min(...fb.pads.map((p) => p.count)) + '–' + Math.max(...fb.pads.map((p) => p.count)) + ' скв. на кусте'],
+    ['Бурение', mln(fb.drillCost), 'млн руб', 'суммарная проходка ' + fmt(fb.mdTotal / 1000, 1) + ' км'],
+    ['Строительство кустов', mln(fb.padBuildCost), 'млн руб', ''],
+    ['Отсыпка', mln(fb.sandCost), 'млн руб', fmt(fb.sandVolume / 1000, 1) + ' тыс. м³ песка'],
+    ['Нарушения ограничений', String(fb.violations), '', 'отход ≤ ' + P.MaxOffset + ' м, MD ≤ ' + P.MaxMD + ' м, разворот ≤ ' + P.MaxAzimuthTurn + '°'],
+  ];
+  $('kpis').innerHTML = kp.map(([k, v, u, d, g]) => `<div class="kpi"><span class="eyebrow">${k}</span><span class="v">${v}<span class="u">${u}</span></span><span class="d${g ? ' good' : ''}">${d}</span></div>`).join('');
+
+  // ---------------- таблица вариантов
+  function violPill(n) { return n === 0 ? '<span class="pill ok">✓ нет</span>' : `<span class="pill bad">✕ ${n}</span>`; }
+  $('t-variants').innerHTML = '<thead><tr><th class="l">Вариант</th><th>Кустов</th><th>Σ MD, км</th><th>Бурение</th><th>Строит. кустов</th><th>Отсыпка</th><th>Итого, млн руб</th><th>Δ к лучшему</th><th>Нарушения</th></tr></thead><tbody>' +
+    R.variants.map((v, i) => {
+      const f = full(v);
+      const cls = [v === best ? 'best' : '', v.sameAs ? 'alias' : '', 'clickable'].join(' ');
+      const tag = v === best ? ' <span class="pill tag">лучший</span>' : v.kind === 'input' ? ' <span class="pill warn">исходный</span>' : '';
+      return `<tr class="${cls}" data-i="${i}"><td class="name l">${esc(v.name)}${tag}</td><td>${f.nPads}</td><td>${fmt(f.mdTotal / 1000)}</td><td>${mln(f.drillCost)}</td><td>${mln(f.padBuildCost)}</td><td>${mln(f.sandCost)}</td><td><b>${mln(f.totalCost)}</b></td><td>${f.totalCost - fb.totalCost > 0.5 ? '+' : ''}${mln(f.totalCost - fb.totalCost)}</td><td>${violPill(f.violations)}</td></tr>`;
+    }).join('') + '</tbody>';
+  $('t-variants').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-i]'); if (!tr) return;
+    $('sel-var').value = tr.dataset.i; renderVariant(); $('h-var').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // ---------------- общие настройки Plotly
+  function baseLayout(extra) {
+    const ink = css('--ink'), ink2 = css('--ink-2'), line = css('--line-2');
+    const ax = { color: ink2, gridcolor: line, zerolinecolor: line, linecolor: css('--line'), tickfont: { family: 'JetBrains Mono, monospace', size: 11, color: ink2 }, title: { font: { size: 12, color: ink2 } } };
+    return Object.assign({
+      paper_bgcolor: css('--surface'), plot_bgcolor: css('--surface'),
+      font: { family: 'Golos Text, system-ui, sans-serif', color: ink, size: 12 },
+      margin: { l: 70, r: 20, t: 16, b: 50 }, showlegend: false,
+      hoverlabel: { bgcolor: css('--surface'), bordercolor: css('--line'), font: { color: ink, family: 'Golos Text, sans-serif' } },
+      xaxis: Object.assign({}, ax), yaxis: Object.assign({}, ax),
+    }, extra || {});
+  }
+  const CFG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['lasso2d', 'select2d'] };
+
+  // ---------------- графики сравнения
+  function renderCompareCharts() {
+    const vs = unique.slice().sort((a, b) => a.totalCost - b.totalCost);
+    const names = vs.map((v) => shortName(v.name));
+    const h = Math.max(260, vs.length * 34 + 70);
+    $('ch-delta').style.height = h + 'px'; $('ch-pads').style.height = h + 'px';
+    const L = baseLayout({ margin: { l: 230, r: 30, t: 10, b: 40 }, bargap: 0.35 });
+    L.yaxis = Object.assign(L.yaxis, { autorange: 'reversed', tickfont: { family: 'Golos Text, sans-serif', size: 11.5, color: css('--ink-2') } });
+    L.xaxis.title = { text: 'млн руб', font: { size: 11, color: css('--ink-3') } };
+    Plotly.react('ch-delta', [{
+      type: 'bar', orientation: 'h', y: names, x: vs.map((v) => (v.totalCost - fb.totalCost) / 1000),
+      marker: { color: vs.map((v) => v === best ? css('--accent') : v.kind === 'input' ? css('--s2') : css('--s1')), line: { width: 0 } },
+      text: vs.map((v) => '+' + mln(v.totalCost - fb.totalCost)), textposition: 'outside', cliponaxis: false,
+      textfont: { family: 'JetBrains Mono, monospace', size: 11, color: css('--ink-2') },
+      hovertemplate: '%{y}<br>Итого: %{customdata} млн руб<br>Δ: %{x:.1f} млн руб<extra></extra>',
+      customdata: vs.map((v) => mln(v.totalCost)),
+    }], L, CFG);
+    const L2 = baseLayout({ margin: { l: 230, r: 20, t: 10, b: 40 }, bargap: 0.35, barmode: 'stack', showlegend: true,
+      legend: { orientation: 'h', y: 1.0, yanchor: 'bottom', x: 0, font: { size: 11.5, color: css('--ink-2') } } });
+    L2.yaxis = Object.assign(L2.yaxis, { autorange: 'reversed', tickfont: { family: 'Golos Text, sans-serif', size: 11.5, color: css('--ink-2') } });
+    L2.xaxis.title = { text: 'млн руб', font: { size: 11, color: css('--ink-3') } };
+    L2.margin.t = 34;
+    Plotly.react('ch-pads', [
+      { type: 'bar', orientation: 'h', name: 'Строительство', y: names, x: vs.map((v) => v.padBuildCost / 1000), marker: { color: css('--s1'), line: { color: css('--surface'), width: 2 } }, hovertemplate: '%{y}<br>Строительство: %{x:.1f} млн руб<extra></extra>' },
+      { type: 'bar', orientation: 'h', name: 'Отсыпка', y: names, x: vs.map((v) => v.sandCost / 1000), marker: { color: css('--s4'), line: { color: css('--surface'), width: 2 } }, hovertemplate: '%{y}<br>Отсыпка: %{x:.1f} млн руб<extra></extra>' },
+    ], L2, CFG);
+  }
+
+  // ---------------- выбор варианта / участка
+  const optHtml = R.variants.map((v, i) => `<option value="${i}">${esc(v.name)}${v.sameAs ? ' (совпадает)' : ''}</option>`).join('');
+  $('sel-var').innerHTML = optHtml; $('sel-a').innerHTML = optHtml; $('sel-b').innerHTML = optHtml;
+  $('sel-var').value = R.variants.indexOf(best);
+  $('sel-a').value = R.variants.indexOf(best);
+  $('sel-b').value = Math.max(0, R.variants.indexOf(ref));
+  $('sel-reg').innerHTML = R.regions.map((r, i) => `<option value="${i}">${esc(r.name)}</option>`).join('');
+
+  const inReg = (reg, n, e) => e >= reg.bounds[0] && e <= reg.bounds[2] && n >= reg.bounds[1] && n <= reg.bounds[3];
+  function padsInRegion(v, reg) { return v.pads.filter((p) => inReg(reg, p.n, p.e)); }
+  function padColors(v, reg) {
+    const m = {}; padsInRegion(v, reg).forEach((p, i) => { m[p.name] = { c: css(SLOTS[i % 8]), dash: DASH[Math.floor(i / 8) % 3] }; });
+    return m;
+  }
+  function padPolygon(p) {
+    const a = p.angle * Math.PI / 180, uN = Math.cos(a), uE = Math.sin(a), vN = -Math.sin(a), vE = Math.cos(a);
+    const hl = p.length / 2, hw = p.width / 2;
+    const c = [[hl, hw], [hl, -hw], [-hl, -hw], [-hl, hw], [hl, hw]];
+    return { e: c.map(([s, w]) => p.e + s * uE + w * vE), n: c.map(([s, w]) => p.n + s * uN + w * vN) };
+  }
+  function legendHtml(v, reg, colors) {
+    const pads = padsInRegion(v, reg);
+    return pads.map((p) => `<span><span class="sw" style="background:${colors[p.name].c}"></span>${esc(p.name)} · ${p.count} скв.</span>`).join('') +
+      '<span><span class="sw" style="background:' + css('--ink') + '"></span>горизонтальный участок T1–T3</span>';
+  }
+  function terrainColorscale() {
+    const cols = [css('--t-dry'), css('--t-swamp'), css('--t-water'), css('--t-forb')];
+    return [[0, cols[0]], [0.25, cols[0]], [0.25, cols[1]], [0.5, cols[1]], [0.5, cols[2]], [0.75, cols[2]], [0.75, cols[3]], [1, cols[3]]];
+  }
+  const codeIdx = (c) => (c === R.forbiddenCode ? 3 : Math.max(0, R.terrainClasses.findIndex((t) => t.code === c)));
+  function terrainTrace(reg, step) {
+    step = step || 1;
+    const g = reg.grid, xs = [], ys = [], z = [];
+    for (let r = 0; r < g.length; r += step) {
+      ys.push(reg.gridN1 - (r + 0.5) * reg.cell);
+      const row = []; for (let c = 0; c < g[r].length; c += step) row.push(codeIdx(g[r][c])); z.push(row);
+    }
+    for (let c = 0; c < g[0].length; c += step) xs.push(reg.gridE0 + (c + 0.5) * reg.cell);
+    return { xs, ys, z };
+  }
+  const terrainNames = () => R.terrainClasses.map((t) => t.name).concat(['Запретная зона']);
+  function terrainLegend() {
+    const cols = ['--t-dry', '--t-swamp', '--t-water', '--t-forb'];
+    return terrainNames().map((n, i) => `<span><span class="sw" style="background:${css(cols[i])};border:1px solid ${css('--line')}"></span>${n}</span>`).join('');
+  }
+
+  function renderVariant() {
+    const sv = R.variants[+$('sel-var').value], v = full(sv), reg = R.regions[+$('sel-reg').value];
+    const colors = padColors(v, reg);
+    const wells = v.wells.filter((w) => colors[w.pad]);
+    const viol = v.wells.filter((w) => w.viol.length).length;
+    $('vsum').innerHTML = [
+      ['Итого', mln(v.totalCost) + ' млн руб'], ['Кустов', v.nPads], ['Σ MD', fmt(v.mdTotal / 1000) + ' км'],
+      ['Бурение', mln(v.drillCost) + ' млн'], ['Кусты', mln(v.padBuildCost) + ' млн'], ['Отсыпка', mln(v.sandCost) + ' млн'],
+      ['Скважин с нарушениями', viol]].map(([k, x]) => `<span>${k}: <b>${x}</b></span>`).join('');
+
+    // ---- 3D
+    const zx = +$('sel-zx').value;
+    const tr3 = [];
+    const t = terrainTrace(reg, 2);
+    tr3.push({ type: 'surface', x: t.xs, y: t.ys, z: t.z.map((r) => r.map(() => 0)), surfacecolor: t.z, cmin: 0, cmax: 3,
+      colorscale: terrainColorscale(), showscale: false, opacity: 0.85, hoverinfo: 'skip', lighting: { ambient: 1, diffuse: 0, specular: 0 } });
+    wells.forEach((w) => {
+      const k = colors[w.pad];
+      tr3.push({ type: 'scatter3d', mode: 'lines', x: w.tr.map((p) => p[1]), y: w.tr.map((p) => p[0]), z: w.tr.map((p) => -p[2]),
+        line: { color: k.c, width: 4, dash: k.dash }, customdata: w.tr.map((p) => [p[3], p[2]]),
+        hovertemplate: `<b>${w.well}</b> · ${w.pad}<br>MD %{customdata[0]:.0f} м · TVD %{customdata[1]:.0f} м<br>E %{x:.0f} · N %{y:.0f}<extra></extra>`, name: w.well });
+      const W = R.wells.find((x) => x.name === w.well);
+      tr3.push({ type: 'scatter3d', mode: 'lines+markers', x: [W.t1[1], W.t3[1]], y: [W.t1[0], W.t3[0]], z: [-W.t1[2], -W.t3[2]],
+        line: { color: css('--ink'), width: 7 }, marker: { size: [4, 2.5], color: css('--ink') }, hoverinfo: 'text',
+        text: [`${w.well}: T1, TVD ${fmt(W.t1[2], 0)} м`, `${w.well}: T3`] });
+    });
+    padsInRegion(v, reg).forEach((p) => {
+      const pg = padPolygon(p);
+      tr3.push({ type: 'scatter3d', mode: 'lines', x: pg.e, y: pg.n, z: pg.e.map(() => 2), line: { color: colors[p.name].c, width: 6 },
+        hoverinfo: 'text', text: `${p.name}: ${p.count} скв.` });
+    });
+    const dx = reg.bounds[2] - reg.bounds[0], dy = reg.bounds[3] - reg.bounds[1];
+    const zmax = Math.max(...wells.flatMap((w) => w.tr.map((p) => p[2])), 3000);
+    const mx = Math.max(dx, dy);
+    const sc = { gridcolor: css('--line'), color: css('--ink-2'), backgroundcolor: css('--surface'), showbackground: false, tickfont: { family: 'JetBrains Mono, monospace', size: 10, color: css('--ink-2') } };
+    Plotly.react('ch-3d', tr3, baseLayout({
+      margin: { l: 0, r: 0, t: 0, b: 0 },
+      scene: { aspectmode: 'manual', aspectratio: { x: dx / mx, y: dy / mx, z: zmax * zx / mx },
+        xaxis: Object.assign({ title: { text: 'E, м' } }, sc), yaxis: Object.assign({ title: { text: 'N, м' } }, sc),
+        zaxis: Object.assign({ title: { text: '−TVD, м' } }, sc), camera: { eye: { x: 1.35, y: -1.35, z: 0.8 } } },
+    }), CFG);
+    $('lg-3d').innerHTML = legendHtml(v, reg, colors) + terrainLegend();
+
+    // ---- план
+    const tp = terrainTrace(reg, 1);
+    const plan = [{ type: 'heatmap', x: tp.xs, y: tp.ys, z: tp.z, zmin: -0.5, zmax: 3.5, colorscale: terrainColorscale(), showscale: false,
+      customdata: tp.z.map((r) => r.map((c) => terrainNames()[c])), hovertemplate: '%{customdata}<br>E %{x:.0f} · N %{y:.0f}<extra></extra>' }];
+    wells.forEach((w) => {
+      const k = colors[w.pad];
+      plan.push({ type: 'scatter', mode: 'lines', x: w.tr.map((p) => p[1]), y: w.tr.map((p) => p[0]), line: { color: k.c, width: 1.6, dash: k.dash },
+        hovertemplate: `<b>${w.well}</b> · ${w.pad}<br>отход ${fmt(w.offset, 0)} м · MD(T1) ${fmt(w.mdT1, 0)} м<extra></extra>` });
+    });
+    const W2 = wells.map((w) => R.wells.find((x) => x.name === w.well));
+    plan.push({ type: 'scatter', mode: 'lines', x: W2.flatMap((W) => [W.t1[1], W.t3[1], null]), y: W2.flatMap((W) => [W.t1[0], W.t3[0], null]),
+      line: { color: css('--ink'), width: 3 }, hoverinfo: 'skip' });
+    plan.push({ type: 'scatter', mode: 'markers+text', x: W2.map((W) => W.t1[1]), y: W2.map((W) => W.t1[0]), text: W2.map((W) => W.name),
+      textposition: 'top center', textfont: { size: 9.5, color: css('--ink-2'), family: 'JetBrains Mono, monospace' },
+      marker: { size: 6, color: css('--surface'), line: { color: css('--ink'), width: 1.5 } }, hovertemplate: '%{text}: T1<extra></extra>' });
+    padsInRegion(v, reg).forEach((p) => {
+      const pg = padPolygon(p);
+      plan.push({ type: 'scatter', mode: 'lines', x: pg.e, y: pg.n, fill: 'toself', fillcolor: colors[p.name].c, opacity: 0.9,
+        line: { color: css('--surface'), width: 2 }, hovertemplate: `<b>${p.name}</b>: ${p.count} скв.<br>отсыпка ${fmt(p.sandVolume / 1000, 1)} тыс. м³<extra></extra>` });
+    });
+    const Lp = baseLayout({ margin: { l: 80, r: 20, t: 10, b: 50 } });
+    Lp.xaxis = Object.assign(Lp.xaxis, { title: { text: 'E, м' }, range: [reg.bounds[0], reg.bounds[2]], showgrid: false });
+    Lp.yaxis = Object.assign(Lp.yaxis, { title: { text: 'N, м' }, range: [reg.bounds[1], reg.bounds[3]], scaleanchor: 'x', showgrid: false });
+    Plotly.react('ch-plan', plan, Lp, CFG);
+    $('lg-plan').innerHTML = legendHtml(v, reg, colors) + terrainLegend();
+
+    // ---- вертикальные проекции
+    ['n', 'e'].forEach((ax) => {
+      const ix = ax === 'n' ? 0 : 1;
+      const tr = wells.map((w) => ({ type: 'scatter', mode: 'lines', x: w.tr.map((p) => p[ix]), y: w.tr.map((p) => p[2]),
+        line: { color: colors[w.pad].c, width: 1.8, dash: colors[w.pad].dash }, hovertemplate: `<b>${w.well}</b> · ${w.pad}<br>TVD %{y:.0f} м<extra></extra>` }));
+      tr.push({ type: 'scatter', mode: 'lines', x: W2.flatMap((W) => [W.t1[ix], W.t3[ix], null]), y: W2.flatMap((W) => [W.t1[2], W.t3[2], null]),
+        line: { color: css('--ink'), width: 3 }, hoverinfo: 'skip' });
+      const L = baseLayout();
+      L.xaxis.title = { text: ax === 'n' ? 'N, м' : 'E, м' }; L.yaxis.title = { text: 'TVD, м' }; L.yaxis.autorange = 'reversed';
+      Plotly.react(ax === 'n' ? 'ch-secn' : 'ch-sece', tr, L, CFG);
+    });
+
+    // ---- таблицы
+    $('t-pads').innerHTML = '<thead><tr><th class="l">Куст</th><th>N, м</th><th>E, м</th><th>Скв.</th><th>Ориентация, °</th><th>Размер, м</th>' +
+      R.terrainClasses.map((t) => `<th>${t.name}</th>`).join('') + '<th>Отсыпка, тыс. м³</th><th>Отсыпка, млн</th><th>Строит., млн</th><th class="l">Состояние</th><th class="l">Скважины</th></tr></thead><tbody>' +
+      v.pads.map((p) => { const k = colors[p.name];
+        return `<tr><td class="l"><span class="sw" style="background:${k ? k.c : css('--ink-3')}"></span>${p.name}</td><td>${fmt(p.n, 0)}</td><td>${fmt(p.e, 0)}</td><td>${p.count}</td><td>${fmt(p.angle, 0)}</td><td>${fmt(p.length, 0)}×${fmt(p.width, 0)}</td>` +
+          R.terrainClasses.map((t) => `<td>${fmt((p.terrain[t.code] || 0) * 100, 0)}%</td>`).join('') +
+          `<td>${fmt(p.sandVolume / 1000)}</td><td>${mln(p.sandCost)}</td><td>${mln(p.buildCost)}</td><td class="l">${p.forbidden ? '<span class="pill bad">✕ запретная зона</span>' : '<span class="pill ok">✓ допустимо</span>'}</td><td class="l">${p.wells.join(' ')}</td></tr>`; }).join('') + '</tbody>';
+    $('t-wells').innerHTML = '<thead><tr><th class="l">Скв.</th><th class="l">Куст</th><th>Слот</th><th>Отход, м</th><th>Разворот, °</th><th>MD до T1</th><th>MD до T3</th><th>ГС, м</th><th>Тангенс, м</th><th>Зенит танг., °</th><th>Крюк, тс</th><th>Момент, кН·м</th><th>Сближение, м</th><th>Бурение, млн</th><th class="l">Проверка</th></tr></thead><tbody>' +
+      v.wells.map((w) => `<tr><td class="l">${w.well}</td><td class="l">${w.pad}</td><td>${w.slot}</td><td>${fmt(w.offset, 0)}</td><td>${fmt(w.azTurn, 0)}</td><td>${fmt(w.mdT1, 0)}</td><td>${fmt(w.mdT3, 0)}</td><td>${fmt(w.hz, 0)}</td><td>${fmt(w.tanLen, 0)}</td><td>${fmt(w.tanInc, 1)}</td><td>${fmt(w.hook, 0)}</td><td>${fmt(w.torque, 1)}</td><td>${fmt(w.minSep, 1)}</td><td>${mln(w.cost, 1)}</td><td class="l">` +
+        (w.viol.length ? `<span class="pill bad">✕ ${w.viol.join(', ')}</span>` : '<span class="pill ok">✓</span>') + (w.warn.length ? ` <span class="pill warn">! ${w.warn.join(', ')}</span>` : '') + '</td></tr>').join('') + '</tbody>';
+  }
+
+  // ---------------- сравнение A/B
+  function renderAB() {
+    const a = full(R.variants[+$('sel-a').value]), b = full(R.variants[+$('sel-b').value]);
+    const reg = R.regions[+$('sel-reg').value];
+    const tp = terrainTrace(reg, 2);
+    const tr = [{ type: 'heatmap', x: tp.xs, y: tp.ys, z: tp.z, zmin: -0.5, zmax: 3.5, colorscale: terrainColorscale(), showscale: false, opacity: 0.55, hoverinfo: 'skip' }];
+    [[a, css('--s1'), 'solid', 'A'], [b, css('--s2'), 'dot', 'B']].forEach(([v, c, dash, lab]) => {
+      const ws = v.wells.filter((w) => inReg(reg, w.whN, w.whE));
+      tr.push({ type: 'scatter', mode: 'lines', x: ws.flatMap((w) => w.tr.map((p) => p[1]).concat([null])), y: ws.flatMap((w) => w.tr.map((p) => p[0]).concat([null])),
+        line: { color: c, width: 1.4, dash }, hoverinfo: 'skip', showlegend: false });
+      padsInRegion(v, reg).forEach((p, i) => {
+        const pg = padPolygon(p);
+        tr.push({ type: 'scatter', mode: 'lines', x: pg.e, y: pg.n, line: { color: c, width: 2.5, dash }, fill: 'toself', fillcolor: c, opacity: 0.85,
+          hovertemplate: `${lab} · ${p.name}: ${p.count} скв.<extra></extra>`, showlegend: i === 0, name: lab + ': ' + shortName(v.name), legendgroup: lab });
+      });
+    });
+    const W = R.wells.filter((x) => inReg(reg, x.t1[0], x.t1[1]));
+    tr.push({ type: 'scatter', mode: 'lines', x: W.flatMap((w) => [w.t1[1], w.t3[1], null]), y: W.flatMap((w) => [w.t1[0], w.t3[0], null]), line: { color: css('--ink'), width: 3 }, hoverinfo: 'skip', showlegend: false });
+    const L = baseLayout({ margin: { l: 70, r: 10, t: 40, b: 50 }, showlegend: true, legend: { orientation: 'h', x: 0, y: 1.01, yanchor: 'bottom', font: { size: 11.5, color: css('--ink-2') } } });
+    L.xaxis = Object.assign(L.xaxis, { title: { text: 'E, м' }, range: [reg.bounds[0], reg.bounds[2]], showgrid: false });
+    L.yaxis = Object.assign(L.yaxis, { title: { text: 'N, м' }, range: [reg.bounds[1], reg.bounds[3]], scaleanchor: 'x', showgrid: false });
+    Plotly.react('ch-ab', tr, L, CFG);
+    const rows = [
+      ['Кустов', (v) => v.nPads, 0, 1], ['Σ MD, км', (v) => v.mdTotal / 1000, 1, 1], ['Бурение, млн руб', (v) => v.drillCost / 1000, 1, 1],
+      ['Строительство кустов, млн руб', (v) => v.padBuildCost / 1000, 1, 1], ['Отсыпка, тыс. м³', (v) => v.sandVolume / 1000, 1, 1],
+      ['Отсыпка, млн руб', (v) => v.sandCost / 1000, 1, 1], ['Итого, млн руб', (v) => v.totalCost / 1000, 1, 1],
+      ['Скважин с нарушениями', (v) => v.wells.filter((w) => w.viol.length).length, 0, 1],
+      ['Макс. отход, м', (v) => Math.max(...v.wells.map((w) => w.offset)), 0, 1],
+      ['Макс. MD до T1, м', (v) => Math.max(...v.wells.map((w) => w.mdT1 || 0)), 0, 1],
+      ['Макс. нагрузка на крюке, тс', (v) => Math.max(...v.wells.map((w) => w.hook || 0)), 0, 1],
+      ['Макс. момент, кН·м', (v) => Math.max(...v.wells.map((w) => w.torque || 0)), 1, 1],
+    ];
+    $('t-ab').innerHTML = '<thead><tr><th class="l">Показатель</th><th>A</th><th>B</th><th>B − A</th></tr></thead><tbody>' +
+      rows.map(([k, f, d]) => { const x = f(a), y = f(b), df = y - x;
+        return `<tr><td class="l" style="font-family:var(--font-body)">${k}</td><td>${fmt(x, d)}</td><td>${fmt(y, d)}</td><td class="${df > 1e-9 ? 'diffpos' : df < -1e-9 ? 'diffneg' : ''}">${df > 0 ? '+' : ''}${fmt(df, d)}</td></tr>`; }).join('') +
+      `</tbody><caption style="caption-side:bottom;text-align:left;padding:10px;font-size:12px;color:${css('--ink-3')}">A: ${esc(a.name)}<br>B: ${esc(b.name)}</caption>`;
+  }
+
+  // ---------------- вкладки и события
+  let activeTab = 't3d';
+  $('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tab]'); if (!b) return;
+    activeTab = b.dataset.tab;
+    document.querySelectorAll('#tabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    document.querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== activeTab; });
+    window.dispatchEvent(new Event('resize'));
+  });
+  $('sel-var').addEventListener('change', renderVariant);
+  $('sel-zx').addEventListener('change', renderVariant);
+  $('sel-reg').addEventListener('change', () => { renderVariant(); renderAB(); });
+  $('sel-a').addEventListener('change', renderAB);
+  $('sel-b').addEventListener('change', renderAB);
+
+  $('foot').innerHTML = [
+    `Ограничения: отход до T1 ≤ ${P.MaxOffset} м; MD до T1 ≤ ${P.MaxMD} м; темпы набора ${P.Dls1} и ${P.Dls2} °/10 м; вертикальный участок ${P.VerticalLength} м; разворот по азимуту ≤ ${P.MaxAzimuthTurn}° (${P.UseAzimuthTurn ? 'учитывается' : 'не учитывается'}); нагрузка на крюке ≤ ${P.MaxHookLoad} тс; момент ≤ ${P.MaxTorque} кН·м.`,
+    `Стоимость: ННС ${P.CostNNS} тыс. руб/м, ГС ${P.CostGS} тыс. руб/м, песок ${P.SandCostPer1000m3} тыс. руб за 1000 м³; строительство куста — по группам числа скважин. Перебор макс. числа скважин на кусте: ${P.StartMaxWellsPerPad}–${P.EndMaxWellsPerPad}.`,
+  ].map((s) => `<span>${s}</span>`).join('');
+
+  function renderAll() { renderCompareCharts(); renderVariant(); renderAB(); }
+  renderAll();
+  // перерисовка при смене темы
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  if (mq.addEventListener) mq.addEventListener('change', renderAll);
+  new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>
